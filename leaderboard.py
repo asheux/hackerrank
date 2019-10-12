@@ -12,35 +12,62 @@ def climbing_leaderboard(scores, alice):
     then returns an integer array where each element res[j]
     represents Alice's rank after the jth game.
     """
-    al_ranks = []
 
-    for _, a_score in enumerate(alice):
-        al_scores = [*[a_score], *scores]
-        ranks = get_ranks(al_scores)
-        set_rank = {rank[0] for rank in ranks if rank[1] == a_score}
-        al_ranks.append(*set_rank)
+    myrank = 1
+    ranks = []
+
+    for index, element in enumerate(scores):
+        currentelem = element
+        nextelem = scores[(index + 1) % len(scores)]
+        rank = myrank
+
+        if currentelem == nextelem:
+            ranks.append(rank)
+        else:
+            myrank += 1
+            ranks.append(rank)
+    return get_alice_ranks(scores, ranks, alice)
+
+
+def get_alice_ranks(scores, ranks, alice_score):
+    """
+    compute rank for alice
+    """
+    al_ranks = []
+    for _, score in enumerate(alice_score):
+        first_score = scores[0]
+        last_score = scores[-1]
+        if score > first_score:
+            al_ranks.append(ranks[0])
+        elif score < last_score:
+            al_ranks.append(ranks[-1] + 1)
+        else:
+            rank = binary_search(scores, score)
+            al_ranks.append(ranks[rank])
     return al_ranks
 
 
-def get_ranks(scores):
+def binary_search(scores, score):
     """
-    compute rank for each player
-    including alice
+    binary search algo
     """
-    ranks = []
-    sorted_scores = sorted(scores, reverse=True)
-    myrank = 1
+    # mid = (low + high)// 2
+    first = 0
+    last = len(scores) - 1
 
-    for index, element in enumerate(sorted_scores):
-        thiselem = element
-        nextelem = sorted_scores[(index + 1) % len(sorted_scores)]
-        (rank, score) = myrank, thiselem
-        if thiselem == nextelem:
-            ranks.append((rank, score))
-        else:
-            myrank += 1
-            ranks.append((rank, score))
-    return ranks
+    while first <= last:
+        mid = (first + last) // 2
+
+        if scores[mid] == score:
+            return mid
+        elif scores[mid] < score < scores[mid - 1]:
+            return mid
+        elif scores[mid] > score >= scores[mid + 1]:
+            return mid + 1
+        elif scores[mid] > score:
+            first = mid + 1
+        elif scores[mid] < score:
+            last = mid - 1
 
 
 if __name__ == '__main__':
