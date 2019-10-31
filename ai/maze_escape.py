@@ -4,7 +4,22 @@ imports
 import math
 import random
 
-DIRECTIONS = ['n', 'e', 'w', 'ne', 'nw', 's', 'se', 'sw']
+
+class Wall:
+    """
+    Room wall object
+    """
+    pass
+
+
+class Door:
+    """
+    room door object
+    """
+    pass
+
+
+DIRECTIONS = ['n', 'e', 'w', 's']
 
 SURFACE = [
         '#######',
@@ -27,8 +42,6 @@ D_COORDS = {
         'sw': (-1, 1)
         }
 
-bot_dir = {'n': 'UP', 's': 'DOWN', 'e': 'RIGHT', 'w': 'LEFT'}
-
 
 def e_f_c(legend, ch):
     if ch == '-':
@@ -50,68 +63,59 @@ class Bot:
     """
     def __init__(self):
         self.d = 'e'
+        self.d_f = False
 
     def get_dir(self, r, v):
-        space = self.find('-', r, v)
-        ch = self.look(self.d, r, v)
-        door = self.find_all('e', r, v)
-        if ch != '-' and space:
-            self.d = space
-        return self.d
+        found = self.find_all(r, v)
+        if isinstance(found, list):
+            self.d = self.find(found, r, v)
+        else:
+            self.d, self.d_f = found, True
+        return self.d, self.d_f
 
-    def move(self, r, v):
-        d = self.get_dir(r, v)
+    def move(self, d, r, v):
         dest = r.get_destination(d, v)
-        bot_pos = r.bots_pos()
-        d_x, d_y = dest
-        b_x, b_y = bot_pos
-        bot = r.g.get_pos_holder(v(b_x, b_y))
-        r.g.set_pos_holder(None, v(b_x, b_y))
-        r.g.set_pos_holder(bot, v(d_x, d_y))
+        bot = r.g.get_pos_holder(v)
+        r.g.set_pos_holder(None, v)
+        r.g.set_pos_holder(bot, dest)
 
     def look(self, d, r, v):
-        x, y = r.bots_pos()
-        x1, y1 = D_COORDS[d]
-        n_v = v.plus(v(x1, y1), x, y)
+        x, y = D_COORDS[d]
+        n_v = v.plus(Vector(x, y))
         if r.g.is_inside(n_v):
             el = r.g.get_pos_holder(n_v)
             return get_char(el)
         return '#'
 
-    def find_all(self, char, r, v):
+    def find_all(self, r, v):
         """find bots 8 adjacent cells"""
         found = []
         for d in DIRECTIONS:
-            if d in bot_dir:
-                ch = self.look(d, r, v)
-                if ch == char:
+            ch = self.look(d, r, v)
+            if ch != '#':
+                if ch == 'e':
+                    return d
+                else:
                     found.append(d)
         return found
 
-    def find(self, ch, r, v):
-        found = self.find_all(ch, r, v)
+    def find(self, found, r, v):
         if len(found) == 0:
             return None
         return found[math.floor(random.random() * len(found))]
-
-
-class Wall:
-    pass
-
-
-class Door:
-    pass
 
 
 class Vector:
     """
     a vector to determine bots coordinates
     """
-    def __init__(self, x, y):
-        self.x, self.y = x, y
+    x, y = None, None
+    def __init__(self, vx, vy):
+        self.x, self.y = vx, vy
+        type(self).x, type(self).y = self.x, self.y
 
     @classmethod
-    def plus(cls, other_v, x, y):
+    def plus(cls, other_v):
         """
         other_v represents the other vector we want to
         add and get the coordinates
@@ -173,19 +177,40 @@ class Room:
                 coords = c
         return coords
 
+    def to_string(self):
+        l = []
+        for x in range(self.g.w):
+            output = ''
+            for y in range(self.g.h):
+                output += get_char(self.g.space[x + y * self.g.w])
+            l.append(output)
+        return l
+
+    @classmethod
+    def act(cls, surf, legend):
+        return cls(surf, legend)
+
     def get_destination(self, d, vector):
-        x1, y1 = D_COORDS[d]
-        x, y = self.bots_pos()
-        v = vector.plus(vector(x1, y1), x, y)
-        return v.x, v.y
+        x, y = D_COORDS[d]
+        v = vector.plus(Vector(x, y))
+        return v
 
 
 if __name__ == '__main__':
-    legend = {
-            '#': Wall,
-            'b': Bot,
-            'e': Door
-            }
-    room = Room(SURFACE, legend)
-    bot = Bot()
-    bot.move(room, Vector)
+    legend = {'#': Wall, 'b': Bot, 'e': Door}
+
+    surf = SURFACE
+    room = Room(surf, legend)
+    x, y = room.bots_pos()
+
+    while True:
+        bot = Bot()
+        v = Vector(x, y)
+        d, f = bot.get_dir(room, v)
+        bot.move(d, room, v)
+        ds = room.get_destination(d, v)
+        x, y = ds.x, ds.y
+        if f:
+            break
+        surf = room.to_string()
+        room = Room.act(surf, legend)
