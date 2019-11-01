@@ -3,6 +3,8 @@ imports
 """
 import math
 import random
+import pickle
+from os import path
 
 
 class Wall:
@@ -18,29 +20,19 @@ class Door:
     """
     pass
 
-
-DIRECTIONS = ['n', 'e', 'w', 's']
-
+FILENAME = 'map.txt'
 SURFACE = [
         '#######',
-        '#--#-b#',
         '#--#--#',
+        '#--#-b#',
         '#--#--#',
         'e-----#',
         '#-----#',
         '#######',
         ]
-
-D_COORDS = {
-        'n': (0, -1),
-        'e': (1, 0),
-        'w': (-1, 0),
-        'ne': (1, -1),
-        'nw': (-1, -1),
-        's': (0, 1),
-        'se': (1, 1),
-        'sw': (-1, 1)
-        }
+DIRECTIONS = ['n', 'e', 'w', 's']
+D_OUTPUT = {'w': 'LEFT', 'e': 'RIGHT', 's': 'UP', 'n': 'DOWN'}
+D_COORDS = {'e': (0, 1), 'n': (1, 0), 's': (-1, 0), 'w': (0, -1)}
 
 
 def e_f_c(legend, ch):
@@ -78,6 +70,7 @@ class Bot:
         bot = r.g.get_pos_holder(v)
         r.g.set_pos_holder(None, v)
         r.g.set_pos_holder(bot, dest)
+        return dest, True
 
     def look(self, d, r, v):
         x, y = D_COORDS[d]
@@ -143,13 +136,13 @@ class Grid:
         """
         gets the position of the bot in the grid
         """
-        return self.space[v.x + self.h * v.y]
+        return self.space[v.y + (self.h * v.x)]
 
     def set_pos_holder(self, value, v):
         """
         set the bot to a new position
         """
-        self.space[v.x + self.h * v.y] = value
+        self.space[v.y + (self.h * v.x)] = value
 
 
 class Room:
@@ -164,7 +157,7 @@ class Room:
 
     def create_room(self):
         """this creates the room the bots are in"""
-        for x, line in enumerate(reversed(self.s)):
+        for x, line in enumerate(self.s):
             for y in range(len(line)):
                 self.g.set_pos_holder(e_f_c(self.l, line[y]), Vector(x, y))
 
@@ -173,18 +166,9 @@ class Room:
         coords = None
         for i, el in enumerate(self.g.space):
             if get_char(el) == 'b':
-                c = i // self.g.w, i % self.g.w
+                c = i // self.g.h, i % self.g.h
                 coords = c
         return coords
-
-    def to_string(self):
-        l = []
-        for x in range(self.g.w):
-            output = ''
-            for y in range(self.g.h):
-                output += get_char(self.g.space[x + y * self.g.w])
-            l.append(output)
-        return l
 
     @classmethod
     def act(cls, surf, legend):
@@ -196,21 +180,46 @@ class Room:
         return v
 
 
-if __name__ == '__main__':
-    legend = {'#': Wall, 'b': Bot, 'e': Door}
+def to_string(space, w, h):
+    surf = []
+    for x in range(w):
+        output = ''
+        for y in range(h):
+            output += get_char(space[y + x * h])
+        surf.append(output)
+    return surf
 
-    surf = SURFACE
+
+def get_surface():
+    if path.exists(FILENAME):
+        with open(FILENAME) as f:
+            surf = [line.rstrip('\n') for line in f.readlines()]
+            return surf
+    else:
+        return SURFACE
+
+
+def set_surface(r):
+    surf = to_string(r.g.space, r.g.w, r.g.h)
+    with open(FILENAME, 'w') as f:
+        for line in surf:
+            f.write(line)
+            f.write('\n')
+
+
+if __name__ == '__main__':
+    bot = Bot()
+    legend = {'#': Wall, 'b': Bot, 'e': Door}
+    surf = get_surface()
     room = Room(surf, legend)
     x, y = room.bots_pos()
-
-    while True:
-        bot = Bot()
-        v = Vector(x, y)
-        d, f = bot.get_dir(room, v)
-        bot.move(d, room, v)
-        ds = room.get_destination(d, v)
-        x, y = ds.x, ds.y
-        if f:
-            break
-        surf = room.to_string()
-        room = Room.act(surf, legend)
+    v = Vector(x, y)
+    d, f = bot.get_dir(room, v)
+    ds, moved = bot.move(d, room, v)
+    if moved:
+        # update map
+        print(D_OUTPUT[d])
+        set_surface(room)
+    if f:
+        # game won
+        print('WON!!')
