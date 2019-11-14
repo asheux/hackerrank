@@ -31,8 +31,8 @@ SURFACE = [
         '#######',
         ]
 DIRECTIONS = ['n', 'e', 'w', 's']
-D_OUTPUT = {'w': 'LEFT', 'e': 'RIGHT', 's': 'UP', 'n': 'DOWN'}
-D_COORDS = {'e': (0, 1), 'n': (1, 0), 's': (-1, 0), 'w': (0, -1)}
+D_OUTPUT = {'w': 'LEFT', 'e': 'RIGHT', 'n': 'UP', 's': 'DOWN'}
+D_COORDS = {'n': (0, 1), 'e': (1, 0), 'w': (-1, 0), 's': (0, -1)}
 
 
 def e_f_c(legend, ch):
